@@ -22,7 +22,9 @@ public class GamePlayer : IGamePlayer
 
     public bool IsComplete => _isComplete;
 
-    public IReadOnlyList<MoveRecord> MoveHistory => _moveHistory;
+    //public IReadOnlyList<MoveRecord> MoveHistory => _moveHistory;
+    public IReadOnlyList<MoveRecord> MoveHistory =>
+    _moveHistory.AsReadOnly();
 
     public GamePlayer()
     {
@@ -44,9 +46,83 @@ public class GamePlayer : IGamePlayer
     Position startPosition,
     Position targetPosition)
     {
+
+        if (pieces == null)
+        {
+            throw new ArgumentNullException(nameof(pieces));
+        }
+
+        if (rows <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rows));
+        }
+
+        if (columns <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(columns));
+        }
+
+
+        if (startPosition.Row < 0 ||
+       startPosition.Row >= rows ||
+       startPosition.Column < 0 ||
+       startPosition.Column >= columns)
+        {
+            throw new ArgumentOutOfRangeException(nameof(startPosition));
+        }
+
+        // Validate target position
+        if (targetPosition.Row < 0 ||
+            targetPosition.Row >= rows ||
+            targetPosition.Column < 0 ||
+            targetPosition.Column >= columns)
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetPosition));
+        }
+
+        // Start and target cannot be the same
+        if (startPosition == targetPosition)
+        {
+            throw new ArgumentException(
+                "Start position and target position cannot be the same.");
+        }
+
+        if (!pieces.ContainsKey(startPosition))
+        {
+            throw new ArgumentException(
+                "The start position must contain a piece.");
+        }
+
+
+        foreach (Position position in pieces.Keys)
+        {
+            if (position.Row < 0 ||
+                position.Row >= rows ||
+                position.Column < 0 ||
+                position.Column >= columns)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(pieces),
+                    "A piece is outside the board.");
+            }
+
+            PieceType piece = pieces[position];
+
+            if (!Enum.IsDefined(typeof(PieceType), piece))
+            {
+                throw new ArgumentException(
+                    "The board contains an invalid piece type.",
+                    nameof(pieces));
+            }
+        }
+
+
+
         _rows = rows;
         _columns = columns;
-        _pieces = pieces;
+
+        //_pieces = pieces;
+        _pieces = new Dictionary<Position, PieceType>(pieces);
 
         StartPosition = startPosition;
         TargetPosition = targetPosition;
@@ -153,11 +229,66 @@ public class GamePlayer : IGamePlayer
             }
         }
 
+
+
+        // Knight movement
+        if (piece == PieceType.Knight)
+        {
+            int rowDifference = Math.Abs(destination.Row - _currentPosition.Row);
+            int columnDifference = Math.Abs(destination.Column - _currentPosition.Column);
+
+            bool validKnightMove =
+                (rowDifference == 2 && columnDifference == 1) ||
+                (rowDifference == 1 && columnDifference == 2);
+
+            if (!validKnightMove)
+            {
+                return MoveResult.InvalidMovement;
+            }
+        }
+
+
+        // King movement
+        if (piece == PieceType.King)
+        {
+            int rowDifference = Math.Abs(destination.Row - _currentPosition.Row);
+            int columnDifference = Math.Abs(destination.Column - _currentPosition.Column);
+
+            if (rowDifference > 1 || columnDifference > 1)
+            {
+                return MoveResult.InvalidMovement;
+            }
+        }
+
+        if (destination != TargetPosition && GetPieceAt(destination) == null)
+        {
+            return MoveResult.InvalidDestination;
+        }
+
+        MoveRecord move = new(
+            _moveHistory.Count + 1,
+            _currentPosition,
+            destination,
+            piece!.Value);
+
+        _moveHistory.Add(move);
+
+        _currentPosition = destination;
+
+        if (destination == TargetPosition)
+        {
+            _isComplete = true;
+            return MoveResult.GameCompleted;
+        }
+
         return MoveResult.Success;
+
     }
 
     public void Restart()
     {
-        throw new NotImplementedException();
+        _currentPosition = StartPosition;
+        _isComplete = false;
+        _moveHistory.Clear();
     }
 }
