@@ -5,5 +5,7 @@ internal static class Program
     {
         Console.WriteLine("BCIT615 Assessment 1 Game Player starter is ready.");
         Console.WriteLine("Implement IGamePlayer in learner-owned Model files.");
+        Console.WriteLine("Implement IGamePlayer in learner-owned Model files.");
+
     }
 }
